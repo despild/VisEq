@@ -95,6 +95,9 @@ void loop() {
     if (sensor_connected) {
         // long reading = scale.read();
         pressure = bmp.readPressure() / 100.0;  // Convert to hPa
+        if (pressure == 0){
+          pressure = 1013.25;
+        }
         bar_pressure = pressure / 1013.25;
         display_pressure = isBar ? pressure / 1013.25 : pressure;
         min_pressure = min(pressure, min_pressure);
@@ -146,19 +149,18 @@ void drawFrame() {
 // Draw real-time graph
 void drawGraph(float pressure) {
     const int graphWidth = MAX_DATA_POINTS;
-    const int graphHeight = 150;
+    const int graphHeight = 149;
     const int graphX = 20;
     const int graphY = 230 - 10 - graphHeight; // 120;
- 
+    drawFrame();
     // Clear graph area
-    sprite.fillRect(graphX, graphY, graphWidth+1, graphHeight, TFT_BLACK);
+    sprite.fillRect(graphX, graphY, graphWidth+1, graphHeight+1, TFT_BLACK);
 
     // Draw pressure data as line graph
     int dataPoints = min(currentIndex, MAX_DATA_POINTS);
 
     float min_value = 10000.0;
     float max_value = 0.0;
-    float total_value = 0.0;
     for (int i = 1; i < dataPoints; i++) {
       int idx1 = (currentIndex - i) % MAX_DATA_POINTS;
       float p1 = pressureData[idx1];
@@ -171,6 +173,8 @@ void drawGraph(float pressure) {
         min_value = 1013.0-25.0;
       }
     }
+    float total_value = 0;
+    float p2_value = 0;
     float one_atm = graphY + graphHeight - mapFloat(1013.25,min_value, max_value, 0, graphHeight);
     // float avg_atm =  graphY + graphHeight - mapFloat(total_value / (float)dataPoints,min_value, max_value, 0, graphHeight);
     sprite.drawLine(graphX, one_atm, graphX+graphWidth, one_atm, TFT_RED);
@@ -181,7 +185,7 @@ void drawGraph(float pressure) {
         float p1 = pressureData[idx1];
         float p2 = pressureData[idx2];
         total_value += p1;
-
+        p2_value = p2;
         int y1 = graphY + graphHeight - mapFloat(p1, min_value, max_value, 0, graphHeight);
         int y2 = graphY + graphHeight - mapFloat(p2, min_value, max_value, 0, graphHeight);
 
@@ -191,8 +195,9 @@ void drawGraph(float pressure) {
             sprite.drawLine(x1, y1, x2, y2, TFT_GREEN);
         }
     }
-    float avg_atm =  graphY + graphHeight - mapFloat(total_value / (float)dataPoints,min_value, max_value, 0, graphHeight);
-    sprite.drawLine((- dataPoints) % MAX_DATA_POINTS, avg_atm, graphX+graphWidth, avg_atm, TFT_YELLOW);
+    Serial.println(String(total_value+p2_value) + "/"+String(dataPoints)+":"+String(p2_value));
+    float avg_atm =  graphY + graphHeight - mapFloat((total_value+p2_value) / (float)dataPoints,min_value, max_value, 0, graphHeight);
+    sprite.drawLine((graphX+graphWidth- dataPoints), avg_atm, graphX+graphWidth, avg_atm, TFT_YELLOW);
 
 
     sprite.drawRect(graphX, graphY, graphWidth, graphHeight, TFT_WHITE);
@@ -213,11 +218,11 @@ void drawGraph(float pressure) {
     if (isBar){
       sprite.drawString("Max : "+String(max_pressure / 1013.25)+ " atm", 300, base_info_y, 2);  // Centered title
       sprite.drawString("Min : "+String(min_pressure / 1013.25)+ " atm", 300, base_info_y+20, 2);  // Centered title
-      sprite.drawString("Avg : "+String(total_value / dataPoints / 1013.25)+ " atm", 300, base_info_y+40, 2);  // Centered title
+      sprite.drawString("Avg : "+String((total_value+p2_value) / dataPoints / 1013.25)+ " atm", 300, base_info_y+40, 2);  // Centered title
     }else{
       sprite.drawString("Max : "+String(max_pressure) + " hPa", 300, base_info_y, 2);  // Centered title
       sprite.drawString("Min : "+String(min_pressure) + " hPa", 300, base_info_y+20, 2);  // Centered title
-      sprite.drawString("Avg : "+String(total_value / dataPoints)+ " hPa", 300, base_info_y+40, 2);  // Centered title
+      sprite.drawString("Avg : "+String((total_value+p2_value) / dataPoints)+ " hPa", 300, base_info_y+40, 2);  // Centered title
     }
 }
 
