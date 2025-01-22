@@ -1,8 +1,8 @@
 #include "rm67162.h"
 #include <TFT_eSPI.h>
-// #include <HX711.h>
-#include <Adafruit_Sensor.h>
-#include <Adafruit_BMP085.h>
+#include <HX711.h>
+// #include <Adafruit_Sensor.h>
+// #include <Adafruit_BMP085.h>
 #include <Wire.h>
 
 // Define constants
@@ -14,11 +14,11 @@ TFT_eSPI tft = TFT_eSPI();
 TFT_eSprite sprite = TFT_eSprite(&tft);
 
 // HX710B settings
-// HX711 scale;
-Adafruit_BMP085 bmp;
+HX711 scale;
+// Adafruit_BMP085 bmp;
 
-// const int LOADCELL_DOUT_PIN = 4;  // DT pin
-// const int LOADCELL_SCK_PIN = 5;   // SCK pin
+const int LOADCELL_DOUT_PIN = 1;  // DT pin
+const int LOADCELL_SCK_PIN = 2;   // SCK pin
 
 // Pressure data
 float pressureData[MAX_DATA_POINTS];
@@ -53,28 +53,37 @@ void setup() {
     sprite.fillScreen(TFT_BLACK);
 
     // Initialize HX710B
-    // scale.begin(LOADCELL_DOUT_PIN, LOADCELL_SCK_PIN);
-    Wire.begin(44, 43); // SCL: GPIO 43, SDA: GPIO44
-    int connect_try = 0;
-    while(1){
-      if (bmp.begin()){
-        sensor_connected = true;
-        break;
-      }else{
-        connect_try ++;
-        if (connect_try > 10){
-          break;
-        }
-      }
-      delay(100);
-    }
-    if (sensor_connected) {
-        // scale.set_scale();  // Calibration needed
-        // scale.tare();       // Set zero
+    scale.begin(LOADCELL_DOUT_PIN, LOADCELL_SCK_PIN);
+    // Wire.begin(44, 43); // SCL: GPIO 43, SDA: GPIO44
+    // int connect_try = 0;
+    // while(1){
+    //   if (bmp.begin()){
+    //     sensor_connected = true;
+    //     break;
+    //   }else{
+    //     connect_try ++;
+    //     if (connect_try > 10){
+    //       break;
+    //     }
+    //   }
+    //   delay(100);
+    // }
+
+    if (scale.is_ready()) {
+        scale.set_scale();  // Calibration needed
+        scale.tare();       // Set zero
         Serial.println("HX710B connected.");
     } else {
-        Serial.println("Could not find a valid BMP180 sensor, check wiring!");
+        Serial.println("HX710B not connected. Using random values.");
     }
+
+    // if (sensor_connected) {
+    //     // scale.set_scale();  // Calibration needed
+    //     // scale.tare();       // Set zero
+    //     Serial.println("HX710B connected.");
+    // } else {
+    //     Serial.println("Could not find a valid BMP180 sensor, check wiring!");
+    // }
 
     // Draw the initial frame
     drawFrame();
@@ -95,9 +104,9 @@ void loop() {
     float pressure = 1.0;
     float bar_pressure = 1.0;
     // Read pressure data
-    if (sensor_connected) {
-        // long reading = scale.read();
-        pressure = bmp.readPressure() / 100.0;  // Convert to hPa
+    if (scale.is_ready()) {
+        long reading = scale.read();
+        pressure = reading; //bmp.readPressure() / 100.0;  // Convert to hPa
         if (pressure == 0){
           pressure = 1013.25;
         }
