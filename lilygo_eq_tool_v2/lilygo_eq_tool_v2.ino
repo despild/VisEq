@@ -73,6 +73,10 @@ void setup() {
         scale.set_scale();  // Calibration needed
         scale.tare();       // Set zero
         Serial.println("HX710B connected.");
+        Serial.println("Idle HX710B.");
+        for(int i = 0; i<10; i++){
+          delay(100);
+        }
     } else {
         Serial.println("HX710B not connected. Using random values.");
     }
@@ -86,6 +90,7 @@ void setup() {
     // }
 
     // Draw the initial frame
+
     drawFrame();
 }
 
@@ -106,7 +111,9 @@ void loop() {
     // Read pressure data
     if (scale.is_ready()) {
         long reading = scale.read();
-        pressure = reading; //bmp.readPressure() / 100.0;  // Convert to hPa
+        float voltage = reading * (5.0 / 8388607.0);
+        pressure = voltage_to_pressure(voltage)+1000.0-30.0;
+        // pressure = reading/720; //bmp.readPressure() / 100.0;  // Convert to hPa
         if (pressure == 0){
           pressure = 1013.25;
         }
@@ -122,26 +129,30 @@ void loop() {
         }else{
           Serial.println(" hPa");
         }
-    } else {
-        // Generate random pressure data if sensor is not connected
-        pressure = pressure + random(-100, 100)/800.0;
-        if (pressure < 0.02){
-          pressure = 0.02;
-        }
-        if (pressure > 10){
-          pressure = 10;
-        }
-        Serial.print("Random Pressure: ");
-        Serial.print(pressure);
-        Serial.println(" atm");
+        pressureData[currentIndex % MAX_DATA_POINTS] = pressure;
+        currentIndex++;
     }
+    // } else {
+    //     // Generate random pressure data if sensor is not connected
+    //     pressure = pressure + random(-100, 100)/800.0;
+    //     if (pressure < 0.02){
+    //       pressure = 0.02;
+    //     }
+    //     if (pressure > 10){
+    //       pressure = 10;
+    //     }
+    //     Serial.print("Random Pressure: ");
+    //     Serial.print(pressure);
+    //     Serial.println(" atm");
+    // }
 
     // Store data for graph
-    pressureData[currentIndex % MAX_DATA_POINTS] = pressure;
-    currentIndex++;
+    // pressureData[currentIndex % MAX_DATA_POINTS] = pressure;
+    // currentIndex++;
 
     // Draw graph
-    drawGraph(pressure);
+    // drawGraph(pressure);
+    drawGraph();
 
     // Push the sprite to the display
     lcd_PushColors(0, 0, 536, 240, (uint16_t *)sprite.getPointer());
@@ -159,7 +170,9 @@ void drawFrame() {
 }
 
 // Draw real-time graph
-void drawGraph(float pressure) {
+// void drawGraph(float pressure) {
+void drawGraph() {
+
     const int graphWidth = MAX_DATA_POINTS;
     const int graphHeight = 149;
     const int graphX = 20;
@@ -236,6 +249,10 @@ void drawGraph(float pressure) {
       sprite.drawString("Min : "+String(min_pressure) + " hPa", 300, base_info_y+20, 2);  // Centered title
       sprite.drawString("Avg : "+String((total_value+p2_value) / dataPoints)+ " hPa", 300, base_info_y+40, 2);  // Centered title
     }
+}
+
+float voltage_to_pressure(float voltage){
+  return (voltage / 10.0) * 100.0 * 10.0;
 }
 
 // Helper: Map float values
